@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "PISO Chain Autonomous AI Validator & Layer 3 Micro-Clearing Engine on 100% Free Serverless Edge",
   "main": "src/worker.ts",
+  "exports": {
+    "./sdk": "./sdk/piso-sdk.ts"
+  },
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
