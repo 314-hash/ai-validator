@@ -76,13 +76,19 @@
       </div>
 
       <!-- Edge Status Indicator -->
-      <div class="flex items-center space-x-4">
-        <div class="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-medium text-slate-600">
+      <div class="flex items-center space-x-3">
+        <!-- Live RPC Status Pill -->
+        <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-medium text-emerald-800">
           <span class="relative flex h-2 w-2">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <span>PC-Off 24/7 Edge Node: <strong class="text-slate-900">Active</strong></span>
+          <span>PISO Chain RPC: <strong id="liveBlockDisplay" class="font-mono">Syncing...</strong></span>
+        </div>
+
+        <div class="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-medium text-slate-600">
+          <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+          <span>Edge Node: <strong class="text-slate-900">24/7 Active</strong></span>
         </div>
 
         <button id="connectWalletBtn" onclick="toggleWalletConnection()" class="inline-flex items-center px-4 py-2 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm">
@@ -296,7 +302,9 @@
 
   <!-- JAVASCRIPT LOGIC -->
   <script>
-    const WORKER_ENDPOINT = 'https://piso-ai-validator.janlad2025.workers.dev';
+    const WORKER_ENDPOINT = window.location.hostname.includes('vercel.app')
+      ? '/api/validator'
+      : 'https://piso-ai-validator.janlad2025.workers.dev';
     let isConnected = false;
     let mockAccount = '0xBC44530866BBb14Be3F93e1b17a816D1e3989803';
 
@@ -436,6 +444,31 @@
     function showToast(msg) {
       console.log('[PISO CHAIN]', msg);
     }
+
+    // Auto-fetch live block height and node status from Cloudflare Edge
+    async function syncEdgeStatus() {
+      try {
+        const res = await fetch(`${WORKER_ENDPOINT}/api/validator-status`);
+        if (res.ok) {
+          const data = await res.json();
+          const display = document.getElementById('liveBlockDisplay');
+          if (data.currentBlock && data.currentBlock !== '0') {
+            display.innerText = 'Block #' + Number(data.currentBlock).toLocaleString();
+            display.parentElement.parentElement.classList.replace('bg-emerald-50', 'bg-emerald-100/70');
+          }
+          if (data.validatorSessionAddress) {
+            document.getElementById('sessionKeyInput').value = data.validatorSessionAddress;
+          }
+        }
+      } catch (err) {
+        console.warn('Edge sync pending:', err);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      syncEdgeStatus();
+      setInterval(syncEdgeStatus, 8000);
+    });
   </script>
 </body>
 </html>

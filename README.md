@@ -60,6 +60,16 @@ npx wrangler deploy
 
 Once deployed, your Cloudflare Worker URL will be active (e.g., `https://piso-ai-validator.<your-subdomain>.workers.dev`).
 
+## 🌐 Vercel Subdomain Integration
+
+If you deploy your frontend or custom subdomain to Vercel (e.g. `https://your-subdomain.vercel.app`):
+1. [`vercel.json`](./vercel.json) is pre-configured with reverse-proxy rewrites pointing `/api/validator/*` directly to `https://piso-ai-validator.janlad2025.workers.dev/api/*`.
+2. Visiting `/validator` on your Vercel subdomain will load the complete [`pisochain-validator-dashboard.html`](./pisochain-validator-dashboard.html).
+3. Set these environment variables in your Vercel Project Settings:
+   - `NEXT_PUBLIC_VALIDATOR_ENDPOINT=https://piso-ai-validator.janlad2025.workers.dev`
+   - `NEXT_PUBLIC_RPC_URL=https://202555.rpcscan.xyz`
+   - `NEXT_PUBLIC_CHAIN_ID=2026001`
+
 ---
 
 ## 🛡️ Security Guarantees: Why Seed Phrases are Never Exposed
