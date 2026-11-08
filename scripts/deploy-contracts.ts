@@ -11,8 +11,8 @@ const pisoChain = defineChain({
   name: 'PISO Chain L3',
   nativeCurrency: { name: 'PISO', symbol: 'PISO', decimals: 18 },
   rpcUrls: {
-    default: { http: [process.env.RPC_URL || 'https://202555.rpcscan.xyz'] },
-    public: { http: [process.env.RPC_URL || 'https://202555.rpcscan.xyz'] }
+    default: { http: [process.env.RPC_URL || 'https://rpc.pisochain.com'] },
+    public: { http: [process.env.RPC_URL || 'https://rpc.pisochain.com'] }
   }
 });
 
@@ -61,7 +61,7 @@ function compileSolidity() {
 }
 
 async function main() {
-  const rpcUrl = process.env.RPC_URL || 'https://202555.rpcscan.xyz';
+  const rpcUrl = process.env.RPC_URL || 'https://rpc.pisochain.com';
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`;
 
   if (!privateKey) {
@@ -70,7 +70,7 @@ async function main() {
     console.log('================================================================');
     console.log('Set your deployer private key (requires a small amount of PISO):');
     console.log('  $env:DEPLOYER_PRIVATE_KEY="0x..."');
-    console.log('  $env:RPC_URL="https://202555.rpcscan.xyz"');
+    console.log('  $env:RPC_URL="https://rpc.pisochain.com"');
     console.log('  npm run deploy:contracts\n');
     console.log('This will deploy:');
     console.log('  1. MockPisoToken.sol           (10,000,000 PISO initial supply)');

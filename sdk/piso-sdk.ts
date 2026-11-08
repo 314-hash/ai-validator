@@ -13,7 +13,7 @@ import {
 export const PISO_CHAIN_CONFIG = {
   chainId: 2026001,
   name: 'PISO Chain L3 Micro-Clearing',
-  rpcUrl: 'https://202555.rpcscan.xyz',
+  rpcUrl: 'https://rpc.pisochain.com',
   explorerUrl: 'https://pisochain.com/explorer',
   defaultWorkerEndpoint: 'https://piso-ai-validator.janlad2025.workers.dev'
 };
