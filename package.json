@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "deploy:contracts": "npx tsx scripts/deploy-contracts.ts",
     "generate:key": "npx tsx scripts/generate-session-key.ts",
     "seed:escrow": "npx tsx scripts/seed-escrow.ts",
+    "test:flow": "npx tsx scripts/test-validation-flow.ts",
     "compile:contracts": "npx hardhat compile"
   },
   "dependencies": {

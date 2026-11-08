@@ -135,7 +135,7 @@ Return ONLY a clean JSON object without markdown or code backticks:
   }
 }`;
 
-    // 1. Run LLM on Cloudflare Workers AI (100% Free: 10,000 neurons/day)
+    // 1. Run LLM on Cloudflare Workers AI with Google Gemini API Free-Tier Fallback
     let aiResponseText = '';
     try {
       const response = await c.env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
@@ -148,18 +148,43 @@ Return ONLY a clean JSON object without markdown or code backticks:
       });
       aiResponseText = response?.response || JSON.stringify(response);
     } catch (aiErr: any) {
-      // Fallback: rule-based or mock if Workers AI model is warming up
-      aiResponseText = JSON.stringify({
-        intent: 'CREATE_ESCROW',
-        explanationTaglish: 'Na-parse ang iyong kahilingan para sa micro-clearing escrow.',
-        parameters: {
-          amount: '500',
-          token: 'PISO',
-          recipientOrSeller: '0x0000000000000000000000000000000000000000',
-          deliverableCriteria: body.prompt,
-          deliverableUri: ''
+      // Free Tier Fallback: Google Gemini API (15 RPM / 1M TPM free)
+      if (c.env.GEMINI_API_KEY) {
+        try {
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${c.env.GEMINI_API_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: `${systemPrompt}\n\nUSER PROMPT: ${body.prompt}` }] }],
+                generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
+              })
+            }
+          );
+          if (geminiRes.ok) {
+            const geminiData: any = await geminiRes.json();
+            aiResponseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          }
+        } catch (geminiErr) {
+          console.error('Gemini fallback error:', geminiErr);
         }
-      });
+      }
+
+      if (!aiResponseText) {
+        // Deterministic heuristic fallback
+        aiResponseText = JSON.stringify({
+          intent: 'CREATE_ESCROW',
+          explanationTaglish: 'Na-parse ang iyong kahilingan para sa micro-clearing escrow.',
+          parameters: {
+            amount: '500',
+            token: 'PISO',
+            recipientOrSeller: '0x0000000000000000000000000000000000000000',
+            deliverableCriteria: body.prompt,
+            deliverableUri: ''
+          }
+        });
+      }
     }
 
     // Clean JSON output from potential surrounding backticks
