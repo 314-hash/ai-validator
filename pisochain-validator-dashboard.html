@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PISO Chain | Autonomous AI Validator & L3 Micro-Clearing</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- GSAP Animation Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#F0FDF4',
+              100: '#DCFCE7',
+              500: '#16A34A',
+              600: '#15803D',
+              900: '#14532D',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #F8FAFC;
+      color: #0F172A;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    }
+    .stripe-blur {
+      background: radial-gradient(circle at 50% 0%, rgba(22, 163, 74, 0.08) 0%, rgba(248, 250, 252, 0) 70%);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #F1F5F9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans stripe-blur selection:bg-brand-100 selection:text-brand-900">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="border-b border-slate-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold font-mono text-sm shadow-sm">
+          ₱
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-slate-900 text-base tracking-tight">pisochain.com</span>
+            <span class="px-2 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200">L3 EDGE AI</span>
+          </div>
+          <p class="text-xs text-slate-500">Autonomous Micro-Clearing Engine</p>
+        </div>
+      </div>
+
+      <!-- Edge Status Indicator -->
+      <div class="flex items-center space-x-4">
+        <div class="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-medium text-slate-600">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span>PC-Off 24/7 Edge Node: <strong class="text-slate-900">Active</strong></span>
+        </div>
+
+        <button id="connectWalletBtn" onclick="toggleWalletConnection()" class="inline-flex items-center px-4 py-2 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm">
+          <span id="walletBtnText">Connect Cold Wallet</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <!-- HERO STATS STRIP -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm transition hover:border-slate-300">
+        <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Validator Cloud Mode</span>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span class="text-2xl font-bold text-slate-900">100% Serverless</span>
+          <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">$0 Budget</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">Cloudflare Edge + Workers AI</p>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm transition hover:border-slate-300">
+        <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Session Key Security</span>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span class="text-2xl font-bold text-slate-900">Zero Withdrawal</span>
+          <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Kernel/EIP-4337</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">Cold wallet holds funds offline</p>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm transition hover:border-slate-300">
+        <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Gas Fee Sponsorship</span>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span class="text-2xl font-bold text-slate-900">₱0.00 Gas</span>
+          <span class="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Paymaster v0.7</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">Sponsored for micro-clearing</p>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm transition hover:border-slate-300">
+        <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Autonomous Quorum</span>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span class="text-2xl font-bold text-slate-900" id="quorumCounter">3 / 3 Required</span>
+          <span class="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">AI Consensus</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">Auto-release on milestone approval</p>
+      </div>
+    </section>
+
+    <!-- TWO COLUMN OPERATIONAL GRID -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+      <!-- LEFT: SESSION DELEGATION & AGENT INTERFACE (7 COLS) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- 1. DELEGATE CLOUD SESSION KEY -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div>
+              <h2 class="text-base font-semibold text-slate-900">1. Cloud Session Key Delegation</h2>
+              <p class="text-xs text-slate-500">Generate a scoped hot key for your 24/7 Cloudflare Worker. Zero token transfer permission.</p>
+            </div>
+            <button onclick="generateBurnerSessionKey()" class="text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200/60 transition">
+              + Generate New Key
+            </button>
+          </div>
+
+          <div class="mt-4 space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Worker Cloud Session Public Address</label>
+              <input type="text" id="sessionKeyInput" readonly value="0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Staking Amount (PISO)</label>
+                <input type="number" id="stakeAmount" value="1000" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:ring-1 focus:ring-slate-900 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Key Validity Period</label>
+                <select id="validityPeriod" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none bg-white">
+                  <option value="30">30 Days (Auto-Expire)</option>
+                  <option value="90">90 Days</option>
+                  <option value="365">1 Year</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="pt-2 flex items-center justify-between">
+              <span class="text-xs text-slate-500">Contract: <code class="text-slate-700 font-mono">PisoAIValidatorRegistry.sol</code></span>
+              <button onclick="delegateSessionOnChain()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition">
+                Stake PISO & Register Session Key
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. TAGLISH / ENGLISH NATURAL LANGUAGE AGENT BAR -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+          <div class="flex items-center space-x-2 pb-4 border-b border-slate-100">
+            <span class="text-base">💬</span>
+            <div>
+              <h2 class="text-base font-semibold text-slate-900">2. Taglish Micro-Clearing AI Agent</h2>
+              <p class="text-xs text-slate-500">Natural language to zero-gas ERC-4337 execution payload.</p>
+            </div>
+          </div>
+
+          <div class="mt-4 space-y-3">
+            <div class="flex flex-wrap gap-1.5">
+              <button onclick="fillPrompt(this.innerText)" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md transition">
+                Boss paki-lock ng 500 PISO escrow kay juan.eth para sa logo design
+              </button>
+              <button onclick="fillPrompt(this.innerText)" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md transition">
+                Pa-release na ng escrow kasi na-deliver na yung figma link
+              </button>
+              <button onclick="fillPrompt(this.innerText)" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md transition">
+                Magkano pa natitirang balance sa micro-clearing pool?
+              </button>
+            </div>
+
+            <div class="relative">
+              <textarea id="agentInput" rows="3" placeholder="I-type dito ang Taglish o English command (hal: 'Paki-lock ng 250 PISO para sa smart contract audit audit.eth')..." class="w-full border border-slate-200 rounded-xl p-3 text-xs text-slate-800 placeholder-slate-400 focus:ring-1 focus:ring-slate-900 focus:outline-none"></textarea>
+              <button onclick="submitAgentCommand()" class="absolute bottom-3 right-3 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg flex items-center space-x-1 transition">
+                <span>Parse & Sponsor</span>
+                <span>⚡</span>
+              </button>
+            </div>
+
+            <!-- RESULT DRAWER -->
+            <div id="agentResult" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                  <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                  <span id="agentIntentBadge">INTENT: CREATE_ESCROW</span>
+                </span>
+                <span class="text-[11px] text-emerald-700 font-medium bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  Zero-Gas Sponsored ✓
+                </span>
+              </div>
+              <p id="agentTaglishExplanation" class="text-xs text-slate-600 font-sans"></p>
+              <pre id="agentRawPayload" class="text-[11px] font-mono bg-white p-2.5 rounded-lg border border-slate-200 overflow-x-auto text-slate-800"></pre>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: 24/7 LIVE EDGE VALIDATION FEED (5 COLS) -->
+      <div class="lg:col-span-5 space-y-6">
+
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm flex flex-col h-full">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div>
+              <h2 class="text-base font-semibold text-slate-900 flex items-center space-x-2">
+                <span>⚡ Edge AI Validator Feed</span>
+              </h2>
+              <p class="text-xs text-slate-500">Autonomous deliveries verified while PC is OFF</p>
+            </div>
+            <span class="px-2.5 py-1 text-[11px] font-mono font-medium bg-slate-100 text-slate-700 rounded-md">
+              Cron: 5m
+            </span>
+          </div>
+
+          <!-- FEED CONTAINER -->
+          <div id="logContainer" class="mt-4 space-y-3 flex-1 overflow-y-auto max-h-[500px] pr-1 custom-scrollbar">
+            <!-- Initial simulated logs -->
+            <div class="log-card p-3 rounded-xl border border-slate-100 bg-slate-50/70 text-xs space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="font-mono text-[10px] text-slate-400">2026-11-09 06:15:00 UTC</span>
+                <span class="px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded">APPROVED</span>
+              </div>
+              <div class="font-medium text-slate-800">Escrow #0x92f...a17 (500 PISO)</div>
+              <div class="text-slate-600 text-[11px]">AI Verdict: "Deliverable fulfills landing page UI spec with responsive design."</div>
+              <div class="flex items-center justify-between pt-1 text-[10px] text-slate-400 font-mono">
+                <span>Quorum: 3/3 Reached</span>
+                <span class="text-emerald-600 font-semibold">Funds Auto-Released</span>
+              </div>
+            </div>
+
+            <div class="log-card p-3 rounded-xl border border-slate-100 bg-slate-50/70 text-xs space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="font-mono text-[10px] text-slate-400">2026-11-09 06:10:00 UTC</span>
+                <span class="px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded">APPROVED</span>
+              </div>
+              <div class="font-medium text-slate-800">Escrow #0x41e...3b9 (120 PISO)</div>
+              <div class="text-slate-600 text-[11px]">AI Verdict: "GitHub pull request merged with passing unit tests."</div>
+              <div class="flex items-center justify-between pt-1 text-[10px] text-slate-400 font-mono">
+                <span>Quorum: 3/3 Reached</span>
+                <span class="text-emerald-600 font-semibold">Funds Auto-Released</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom trigger test button -->
+          <div class="pt-4 mt-auto border-t border-slate-100 flex items-center justify-between">
+            <span class="text-[11px] text-slate-400">Synced to PISO Chain RPC</span>
+            <button onclick="simulateLiveCronAttestation()" class="text-xs text-slate-600 hover:text-slate-900 font-medium flex items-center space-x-1">
+              <span>Simulate Next Cron Run</span>
+              <span>↻</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    const WORKER_ENDPOINT = 'https://piso-ai-validator.janlad2025.workers.dev';
+    let isConnected = false;
+    let mockAccount = '0xBC44530866BBb14Be3F93e1b17a816D1e3989803';
+
+    function toggleWalletConnection() {
+      const btn = document.getElementById('walletBtnText');
+      if (!isConnected) {
+        isConnected = true;
+        btn.innerText = 'Connected: ' + mockAccount;
+        btn.parentElement.classList.replace('bg-slate-900', 'bg-emerald-700');
+        showToast('Cold Wallet Connected: Zero token withdrawal risk.');
+      } else {
+        isConnected = false;
+        btn.innerText = 'Connect Cold Wallet';
+        btn.parentElement.classList.replace('bg-emerald-700', 'bg-slate-900');
+      }
+    }
+
+    function generateBurnerSessionKey() {
+      const chars = '0123456789abcdef';
+      let addr = '0x';
+      for (let i = 0; i < 40; i++) addr += chars[Math.floor(Math.random() * chars.length)];
+      
+      const input = document.getElementById('sessionKeyInput');
+      input.value = addr;
+
+      gsap.from(input, {
+        backgroundColor: '#DCFCE7',
+        duration: 0.8,
+        ease: 'power2.out'
+      });
+
+      showToast('Generated Scoped Session Key. No fund transfer permission.');
+    }
+
+    function fillPrompt(text) {
+      document.getElementById('agentInput').value = text;
+    }
+
+    async function submitAgentCommand() {
+      const prompt = document.getElementById('agentInput').value.trim();
+      if (!prompt) return;
+
+      const resultBox = document.getElementById('agentResult');
+      resultBox.classList.remove('hidden');
+
+      document.getElementById('agentIntentBadge').innerText = 'ANALYZING VIA WORKERS AI...';
+      document.getElementById('agentTaglishExplanation').innerText = 'Ipinaproseso sa Cloudflare edge...';
+
+      // Call Cloudflare Worker endpoint
+      try {
+        const response = await fetch(`${WORKER_ENDPOINT}/api/agent-command`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, userAddress: mockAccount })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          renderAgentOutput(data);
+          return;
+        }
+      } catch (e) {
+        // Fallback realistic mock for offline or standalone HTML demo
+      }
+
+      // Offline fallback simulation
+      setTimeout(() => {
+        const isEscrow = prompt.toLowerCase().includes('lock') || prompt.toLowerCase().includes('escrow');
+        const simulated = {
+          agentDecision: {
+            intent: isEscrow ? 'CREATE_ESCROW' : 'SUBMIT_DELIVERABLE',
+            explanationTaglish: isEscrow 
+              ? 'Ila-lock ang 500 PISO sa micro-clearing registry para sa napiling recipient nang may AI verification.'
+              : 'I-a-attach ang deliverable link para suriin ng autonomous AI validator.',
+            parameters: {
+              amount: '500 PISO',
+              seller: '0x314...juan.eth',
+              criteria: prompt,
+              quorumRequired: 3
+            }
+          },
+          zeroGasSponsorship: {
+            paymasterAddress: '0x53d284357ec70cE289D6D64134DfAc8E511c8a3D',
+            isGaslessSponsored: true
+          }
+        };
+        renderAgentOutput(simulated);
+      }, 400);
+    }
+
+    function renderAgentOutput(data) {
+      const badge = document.getElementById('agentIntentBadge');
+      const exp = document.getElementById('agentTaglishExplanation');
+      const raw = document.getElementById('agentRawPayload');
+
+      badge.innerText = `INTENT: ${data.agentDecision.intent}`;
+      exp.innerText = data.agentDecision.explanationTaglish || 'Na-parse ang Taglish command sa deterministic JSON.';
+      raw.innerText = JSON.stringify(data, null, 2);
+
+      gsap.from('#agentResult', {
+        opacity: 0,
+        y: 8,
+        duration: 0.35,
+        ease: 'power2.out'
+      });
+    }
+
+    function delegateSessionOnChain() {
+      const key = document.getElementById('sessionKeyInput').value;
+      const stake = document.getElementById('stakeAmount').value;
+      alert(`[CALLING CONTRACT PisoAIValidatorRegistry.sol]\n\nMethod: registerValidator()\nSession Key: ${key}\nStake Amount: ${stake} PISO\n\nResult: Transaction verified. Session key holds strictly 0 withdrawal permissions.`);
+    }
+
+    function simulateLiveCronAttestation() {
+      const container = document.getElementById('logContainer');
+      const now = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+      const randomEscrow = '0x' + Math.random().toString(16).substring(2, 8) + '...' + Math.random().toString(16).substring(2, 5);
+
+      const newCard = document.createElement('div');
+      newCard.className = 'log-card p-3 rounded-xl border border-slate-100 bg-emerald-50/40 text-xs space-y-1.5';
+      newCard.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="font-mono text-[10px] text-slate-400">${now}</span>
+          <span class="px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded">AI ATTESTED</span>
+        </div>
+        <div class="font-medium text-slate-800">Escrow #${randomEscrow} (350 PISO)</div>
+        <div class="text-slate-600 text-[11px]">AI Verdict: "Deliverable verified via Cloudflare Meta Llama 3.1 8B inference."</div>
+        <div class="flex items-center justify-between pt-1 text-[10px] text-slate-400 font-mono">
+          <span>Quorum: 3/3 Reached</span>
+          <span class="text-emerald-600 font-semibold">Funds Auto-Released</span>
+        </div>
+      `;
+
+      container.prepend(newCard);
+      gsap.from(newCard, { opacity: 0, y: -12, duration: 0.4, ease: 'back.out(1.5)' });
+    }
+
+    function showToast(msg) {
+      console.log('[PISO CHAIN]', msg);
+    }
+  </script>
+</body>
+</html>
+

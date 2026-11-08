@@ -1,0 +1,24 @@
+{
+  "name": "piso-chain-autonomous-validator",
+  "version": "1.0.0",
+  "description": "PISO Chain Autonomous AI Validator & Layer 3 Micro-Clearing Engine on 100% Free Serverless Edge",
+  "main": "src/worker.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "generate:key": "npx tsx scripts/generate-session-key.ts",
+    "seed:escrow": "npx tsx scripts/seed-escrow.ts",
+    "compile:contracts": "npx hardhat compile"
+  },
+  "dependencies": {
+    "hono": "^4.6.14",
+    "viem": "^2.21.57"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241230.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "wrangler": "^3.99.0"
+  }
+}
+
