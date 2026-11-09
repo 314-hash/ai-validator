@@ -57,8 +57,8 @@ const app = new Hono<{ Bindings: Env }>();
 // Enable CORS for frontend dashboard and community apps
 app.use('*', cors({
   origin: '*',
-  allowHeaders: ['Content-Type', 'Authorization'],
-  allowMethods: ['GET', 'POST', 'OPTIONS']
+  allowHeaders: ['Content-Type', 'Authorization', 'Bypass-Tunnel-Reminder', 'bypass-tunnel-reminder', 'X-Requested-With', 'Cache-Control', 'Pragma'],
+  allowMethods: ['GET', 'POST', 'OPTIONS', 'HEAD']
 }));
 
 // ============================================================================
@@ -347,7 +347,7 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
   }
 }
 
-app.post('/', async (c) => {
+const handleRpcRoute = async (c: any) => {
   try {
     const body: any = await c.req.json();
     if (Array.isArray(body)) {
@@ -363,7 +363,11 @@ app.post('/', async (c) => {
   } catch (err: any) {
     return c.json({ jsonrpc: '2.0', id: null, error: { code: -32603, message: err.message } }, 500);
   }
-});
+};
+
+app.post('/', handleRpcRoute);
+app.post('/rpc', handleRpcRoute);
+app.all('/rpc', handleRpcRoute);
 
 // ============================================================================
 // 1. HEALTH & VALIDATOR STATUS ENDPOINT
@@ -696,6 +700,9 @@ Respond ONLY with this exact JSON format:
 
   return logEntries;
 }
+
+// Universal catch-all for JSON-RPC POST requests to any arbitrary path
+app.post('*', handleRpcRoute);
 
 // Export default Worker with fetch router and scheduled cron trigger
 export default {
