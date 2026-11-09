@@ -63,6 +63,28 @@ app.get('/', (c) => c.html(DASHBOARD_HTML));
 app.get('/dashboard', (c) => c.html(DASHBOARD_HTML));
 
 // ============================================================================
+// 24/7 CLOUDFLARE JSON-RPC GATEWAY (MAKES rpc.pisochain.com WORK ON CLOUDFLARE)
+// ============================================================================
+app.post('/', async (c) => {
+  try {
+    const body: any = await c.req.json();
+    if (body && (body.jsonrpc || body.method)) {
+      const targetRpc = 'https://202555.rpcscan.xyz';
+      const rpcRes = await fetch(targetRpc, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await rpcRes.json();
+      return c.json(data);
+    }
+    return c.json({ error: 'Not a JSON-RPC request' }, 400);
+  } catch (err: any) {
+    return c.json({ jsonrpc: '2.0', id: null, error: { code: -32603, message: err.message } }, 500);
+  }
+});
+
+// ============================================================================
 // 1. HEALTH & VALIDATOR STATUS ENDPOINT
 // ============================================================================
 app.get('/api/validator-status', async (c) => {
