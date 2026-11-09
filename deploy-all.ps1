@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # PISO CHAIN AUTONOMOUS AI VALIDATOR - 1-CLICK LAUNCH SCRIPT ($0 BUDGET)
 # ==============================================================================
 
@@ -40,3 +40,4 @@ Write-Host "================================================================" -F
 Write-Host "To publish to GitHub, run:" -ForegroundColor Cyan
 Write-Host "  git push -u origin main" -ForegroundColor White
 Write-Host "================================================================`n" -ForegroundColor Green
+

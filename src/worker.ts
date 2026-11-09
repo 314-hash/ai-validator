@@ -25,6 +25,9 @@ export interface Env {
   VALIDATOR_SESSION_PRIVATE_KEY: `0x${string}`;
   PAYMASTER_PRIVATE_KEY?: `0x${string}`;
   GEMINI_API_KEY?: string;
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_CHAT_ID?: string;
+  DISCORD_WEBHOOK_URL?: string;
 }
 
 // --- DEFINE PISO CHAIN LAYER 3 NETWORK ---
@@ -69,7 +72,15 @@ app.post('/', async (c) => {
   try {
     const body: any = await c.req.json();
     if (body && (body.jsonrpc || body.method)) {
-      const targetRpc = 'https://202555.rpcscan.xyz';
+      // Enforce official PISO Chain ID: 2026001 (0x1eea11)
+      if (body.method === 'eth_chainId') {
+        return c.json({ jsonrpc: '2.0', id: body.id, result: '0x1eea11' });
+      }
+      if (body.method === 'net_version') {
+        return c.json({ jsonrpc: '2.0', id: body.id, result: '2026001' });
+      }
+
+      const targetRpc = c.env.UPSTREAM_NODE_URL || 'https://202555.rpcscan.xyz';
       const rpcRes = await fetch(targetRpc, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -389,6 +400,25 @@ Respond ONLY with this exact JSON format:
       await env.PISO_KV.put(`log:validation:${Date.now()}`, JSON.stringify(log), { expirationTtl: 86400 * 7 });
       await env.PISO_KV.delete(item.name);
       logEntries.push(log);
+
+      // Optional Zero-Cost Push Notifications to Telegram / Discord
+      if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
+        const teleMsg = `₱ *PISO Chain AI Validator Attestation*\n\n*Verdict:* ${aiResult.approved ? '✅ APPROVED' : '❌ REJECTED'}\n*Escrow:* \`${escrowData.escrowId.slice(0, 16)}...\`\n*Confidence:* ${(aiResult.confidenceScore * 100).toFixed(1)}%\n*Taglish Reason:* ${aiResult.reasonTaglish}\n*Tx:* \`${txHash.slice(0, 16)}...\``;
+        fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: teleMsg, parse_mode: 'Markdown' })
+        }).catch(() => {});
+      }
+      if (env.DISCORD_WEBHOOK_URL) {
+        fetch(env.DISCORD_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: `₱ **PISO Chain AI Validator Attestation**\nVerdict: **${aiResult.approved ? 'APPROVED' : 'REJECTED'}** | Confidence: **${(aiResult.confidenceScore * 100).toFixed(1)}%**\nEscrow: \`${escrowData.escrowId}\`\nTx: \`${txHash}\``
+          })
+        }).catch(() => {});
+      }
     } catch (err: any) {
       console.error(`Error validating escrow ${escrowData.escrowId}:`, err);
     }
