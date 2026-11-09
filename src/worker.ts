@@ -11,7 +11,8 @@ import {
   defineChain,
   concat,
   parseTransaction,
-  recoverTransactionAddress
+  recoverTransactionAddress,
+  getContractAddress
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { DASHBOARD_HTML } from './dashboard-html';
@@ -185,6 +186,7 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
       let gasHex = '0x5208';
       let dataHex = '0x';
       let nonceHex = '0x0';
+      let deployedContractAddress: string | null = null;
 
       try {
         const parsed = parseTransaction(rawTx as `0x${string}`);
@@ -194,6 +196,14 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
         dataHex = parsed.data || '0x';
         nonceHex = toHex(parsed.nonce || 0);
         sender = await recoverTransactionAddress({ serializedTransaction: rawTx as any });
+
+        // If 'to' is omitted, this is a contract deployment
+        if (!parsed.to) {
+          deployedContractAddress = getContractAddress({
+            from: sender as `0x${string}`,
+            nonce: BigInt(nonceHex)
+          }).toLowerCase();
+        }
       } catch (_) {}
 
       const receiptObj = {
@@ -209,7 +219,8 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
         logsBloom: '0x' + '0'.repeat(512),
         type: '0x2',
         from: sender.toLowerCase(),
-        to: recipient.toLowerCase()
+        to: deployedContractAddress ? null : recipient.toLowerCase(),
+        contractAddress: deployedContractAddress
       };
 
       const txObj = {
