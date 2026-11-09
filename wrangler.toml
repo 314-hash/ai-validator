@@ -11,7 +11,7 @@ binding = "AI"
 # --- 100% FREE TIER KV STORAGE ---
 # State caching for micro-clearing and validator execution logs
 [[kv_namespaces]]
-binding = "piso-ai-validator-PISO_KV"
+binding = "PISO_KV"
 id = "2472efff5d67497d8009ba15f82515e8"
 
 # --- 24/7 FREE CRON TRIGGER (NO LOCAL PC REQUIRED) ---

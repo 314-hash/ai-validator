@@ -68,11 +68,18 @@ app.get('/dashboard', (c) => c.html(DASHBOARD_HTML));
 // ============================================================================
 // 24/7 CLOUDFLARE JSON-RPC GATEWAY (MAKES rpc.pisochain.com WORK ON CLOUDFLARE)
 // ============================================================================
+const GENESIS_BALANCES: Record<string, string> = {
+  // Founder Validator: 40 Billion PISO (0x813f3978f894098440000000)
+  '0x1821f246a27287a2187e1d634b8883030fa14731': '0x813f3978f894098440000000',
+  // Mining Treasury: 60 Billion PISO (0xc1ded63574de0e4660000000)
+  '0x0000000000000000000000000000000000001004': '0xc1ded63574de0e4660000000'
+};
+
 app.post('/', async (c) => {
   try {
     const body: any = await c.req.json();
     if (body && (body.jsonrpc || body.method)) {
-      // Enforce official PISO Chain ID: 2026001 (0x1eea11)
+      // 1. Enforce official PISO Chain ID: 2026001 (0x1eea11)
       if (body.method === 'eth_chainId') {
         return c.json({ jsonrpc: '2.0', id: body.id, result: '0x1eea11' });
       }
@@ -80,6 +87,31 @@ app.post('/', async (c) => {
         return c.json({ jsonrpc: '2.0', id: body.id, result: '2026001' });
       }
 
+      // 2. Genesis State & Cloudflare KV Balance Cache
+      if (body.method === 'eth_getBalance') {
+        const targetAddr = (body.params?.[0] || '').toLowerCase();
+        const kv = c.env.PISO_KV || (c.env as any)['piso-ai-validator-PISO_KV'];
+        if (kv) {
+          const kvBal = await kv.get(`balance:${targetAddr}`);
+          if (kvBal) {
+            return c.json({ jsonrpc: '2.0', id: body.id, result: kvBal });
+          }
+        }
+        // Return Genesis pre-allocated balance
+        if (GENESIS_BALANCES[targetAddr]) {
+          return c.json({ jsonrpc: '2.0', id: body.id, result: GENESIS_BALANCES[targetAddr] });
+        }
+      }
+
+      // 3. Fast Gas Estimation & Fees
+      if (body.method === 'eth_gasPrice') {
+        return c.json({ jsonrpc: '2.0', id: body.id, result: '0x3b9aca00' }); // 1 Gwei
+      }
+      if (body.method === 'eth_estimateGas') {
+        return c.json({ jsonrpc: '2.0', id: body.id, result: '0x5208' }); // 21,000 gas
+      }
+
+      // 4. Fallback to Upstream / PISO Chain Node
       const targetRpc = c.env.UPSTREAM_NODE_URL || 'https://202555.rpcscan.xyz';
       const rpcRes = await fetch(targetRpc, {
         method: 'POST',
@@ -87,6 +119,15 @@ app.post('/', async (c) => {
         body: JSON.stringify(body)
       });
       const data = await rpcRes.json();
+
+      // If upstream has no balance but address is in Genesis, override
+      if (body.method === 'eth_getBalance') {
+        const targetAddr = (body.params?.[0] || '').toLowerCase();
+        if (GENESIS_BALANCES[targetAddr] && (!data.result || data.result === '0x0')) {
+          data.result = GENESIS_BALANCES[targetAddr];
+        }
+      }
+
       return c.json(data);
     }
     return c.json({ error: 'Not a JSON-RPC request' }, 400);
