@@ -3,6 +3,11 @@ main = "src/worker.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 
+# --- CLOUDFLARE ROUTE BINDING (INTERCEPTS rpc.pisochain.com) ---
+routes = [
+  { pattern = "rpc.pisochain.com/*", zone_name = "pisochain.com" }
+]
+
 # --- 100% FREE TIER CLOUDFLARE WORKERS AI ---
 # Provides 10,000 free inference requests per day for deliverable parsing
 [ai]
