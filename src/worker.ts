@@ -235,6 +235,31 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
         // Increment sender nonce
         const currentNonce = parseInt(nonceHex, 16);
         await kv.put(`nonce:${sender.toLowerCase()}`, toHex(currentNonce + 1), { expirationTtl: 86400 * 30 });
+
+        // Real-time Balance Accounting: Deduct value + gas from sender, credit value to recipient
+        const sAddr = sender.toLowerCase();
+        const rAddr = recipient.toLowerCase();
+        const txValWei = BigInt(valueHex);
+        const gasCostWei = BigInt(gasHex) * 1000000000n; // 1 Gwei gas price
+
+        // 1. Update Sender Balance in KV
+        let sBalHex = await kv.get(`balance:${sAddr}`) || GENESIS_BALANCES[sAddr] || '0x813f3978f894098440000000';
+        let sBalWei = BigInt(sBalHex);
+        const totalDeduct = txValWei + gasCostWei;
+        if (sBalWei >= totalDeduct) {
+          sBalWei -= totalDeduct;
+        } else if (sBalWei >= txValWei) {
+          sBalWei -= txValWei;
+        }
+        await kv.put(`balance:${sAddr}`, toHex(sBalWei), { expirationTtl: 86400 * 30 });
+
+        // 2. Update Recipient Balance in KV (if value was transferred)
+        if (txValWei > 0n && sAddr !== rAddr) {
+          let rBalHex = await kv.get(`balance:${rAddr}`) || GENESIS_BALANCES[rAddr] || '0x0';
+          let rBalWei = BigInt(rBalHex);
+          rBalWei += txValWei;
+          await kv.put(`balance:${rAddr}`, toHex(rBalWei), { expirationTtl: 86400 * 30 });
+        }
       }
 
       return { jsonrpc: '2.0', id, result: txHash };
