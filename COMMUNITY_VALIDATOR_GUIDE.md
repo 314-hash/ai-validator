@@ -16,8 +16,8 @@
 
 ### 2. Fork & Clone
 ```bash
-git clone https://github.com/314-hash/piso-chain.git
-cd piso-chain
+git clone https://github.com/314-hash/ai-validator.git
+cd ai-validator
 npm install
 ```
 
@@ -58,3 +58,4 @@ npx wrangler deploy
 4. Confirm on-chain.
 
 **You can now turn your PC completely OFF.** Your Cloudflare worker will wake up every 5 minutes in the cloud, evaluate completed tasks using Meta Llama 3.1 8B, and release milestones automatically.
+
