@@ -12,7 +12,8 @@ import {
   concat,
   parseTransaction,
   recoverTransactionAddress,
-  getContractAddress
+  getContractAddress,
+  encodeAbiParameters
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { DASHBOARD_HTML } from './dashboard-html';
@@ -87,6 +88,10 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
   const kv = env.PISO_KV || (env as any)['piso-ai-validator-PISO_KV'];
 
   try {
+    // Dynamic Block Height: Advances every 2 seconds
+    const currentBlockNum = 35811328n + BigInt(Math.floor(Date.now() / 2000));
+    const currentBlockHex = '0x' + currentBlockNum.toString(16);
+
     // 1. Chain & Network Identity
     if (method === 'eth_chainId') {
       return { jsonrpc: '2.0', id, result: '0x1eea11' }; // 2026001
@@ -95,7 +100,7 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
       return { jsonrpc: '2.0', id, result: '2026001' };
     }
     if (method === 'eth_blockNumber') {
-      return { jsonrpc: '2.0', id, result: '0x2227000' };
+      return { jsonrpc: '2.0', id, result: currentBlockHex };
     }
     if (method === 'eth_syncing') {
       return { jsonrpc: '2.0', id, result: false };
@@ -151,7 +156,7 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
         jsonrpc: '2.0',
         id,
         result: {
-          number: '0x2227000',
+          number: currentBlockHex,
           hash: '0x1111111111111111111111111111111111111111111111111111111111111111',
           parentHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
           nonce: '0x0000000000000000',
@@ -206,16 +211,68 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
         }
       } catch (_) {}
 
+      // Handle ERC-20 transfer(address to, uint256 amount) [selector: 0xa9059cbb]
+      // or mint(address to, uint256 amount) [selector: 0x40c10f19]
+      const logsList: any[] = [];
+      let isTokenTransfer = false;
+      let isMint = false;
+      let tokenTo = '';
+      let tokenAmount = 0n;
+
+      if (dataHex.toLowerCase().startsWith('0xa9059cbb') && dataHex.length >= 138) {
+        isTokenTransfer = true;
+        tokenTo = '0x' + dataHex.slice(34, 74).toLowerCase();
+        tokenAmount = BigInt('0x' + dataHex.slice(74, 138));
+
+        const transferLog = {
+          address: recipient.toLowerCase(),
+          topics: [
+            '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', // Transfer(address,address,uint256)
+            '0x000000000000000000000000' + sender.toLowerCase().replace('0x', ''),
+            '0x000000000000000000000000' + tokenTo.replace('0x', '')
+          ],
+          data: '0x' + tokenAmount.toString(16).padStart(64, '0'),
+          blockNumber: currentBlockHex,
+          transactionHash: txHash,
+          transactionIndex: '0x0',
+          blockHash: '0x1111111111111111111111111111111111111111111111111111111111111111',
+          logIndex: '0x0',
+          removed: false
+        };
+        logsList.push(transferLog);
+      } else if (dataHex.toLowerCase().startsWith('0x40c10f19') && dataHex.length >= 138) {
+        isMint = true;
+        tokenTo = '0x' + dataHex.slice(34, 74).toLowerCase();
+        tokenAmount = BigInt('0x' + dataHex.slice(74, 138));
+
+        const mintLog = {
+          address: recipient.toLowerCase(),
+          topics: [
+            '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+            '0x0000000000000000000000000000000000000000000000000000000000000000',
+            '0x000000000000000000000000' + tokenTo.replace('0x', '')
+          ],
+          data: '0x' + tokenAmount.toString(16).padStart(64, '0'),
+          blockNumber: currentBlockHex,
+          transactionHash: txHash,
+          transactionIndex: '0x0',
+          blockHash: '0x1111111111111111111111111111111111111111111111111111111111111111',
+          logIndex: '0x0',
+          removed: false
+        };
+        logsList.push(mintLog);
+      }
+
       const receiptObj = {
         transactionHash: txHash,
         transactionIndex: '0x0',
-        blockNumber: '0x2227000',
+        blockNumber: currentBlockHex,
         blockHash: '0x1111111111111111111111111111111111111111111111111111111111111111',
         cumulativeGasUsed: gasHex,
         gasUsed: gasHex,
         effectiveGasPrice: '0x3b9aca00',
         status: '0x1',
-        logs: [],
+        logs: logsList,
         logsBloom: '0x' + '0'.repeat(512),
         type: '0x2',
         from: sender.toLowerCase(),
@@ -226,7 +283,7 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
       const txObj = {
         hash: txHash,
         blockHash: '0x1111111111111111111111111111111111111111111111111111111111111111',
-        blockNumber: '0x2227000',
+        blockNumber: currentBlockHex,
         transactionIndex: '0x0',
         from: sender.toLowerCase(),
         to: recipient.toLowerCase(),
@@ -243,6 +300,11 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
       if (kv) {
         await kv.put(`receipt:${txHash}`, JSON.stringify(receiptObj), { expirationTtl: 86400 * 30 });
         await kv.put(`tx:${txHash}`, JSON.stringify(txObj), { expirationTtl: 86400 * 30 });
+
+        if (deployedContractAddress) {
+          await kv.put(`code:${deployedContractAddress.toLowerCase()}`, '0x608060405234801561001057600080fd5b50' + '00'.repeat(128), { expirationTtl: 86400 * 30 });
+        }
+
         // Increment sender nonce
         const currentNonce = parseInt(nonceHex, 16);
         await kv.put(`nonce:${sender.toLowerCase()}`, toHex(currentNonce + 1), { expirationTtl: 86400 * 30 });
@@ -270,6 +332,44 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
           let rBalWei = BigInt(rBalHex);
           rBalWei += txValWei;
           await kv.put(`balance:${rAddr}`, toHex(rBalWei), { expirationTtl: 86400 * 30 });
+        }
+
+        // 3. Real-time ERC-20 Token Balance & Event Logging in KV
+        const cAddr = recipient.toLowerCase();
+        const isUSDT = cAddr === '0x2953399124f0cbb46d2cbacd8a89cf0599974963' || cAddr === '0x9718b7611404edc7d2f2f0c3b5c14204ebe20b43';
+        const defaultBal = isUSDT ? 10000000000n : 100000000000000000000000000n;
+
+        if (isTokenTransfer && tokenTo && tokenAmount > 0n) {
+          // Deduct from sender token balance
+          let sTokenBalStr = await kv.get(`tokenbal:${cAddr}:${sAddr}`);
+          let sTokenBal = sTokenBalStr ? BigInt(sTokenBalStr) : defaultBal;
+          if (sTokenBal >= tokenAmount) {
+            sTokenBal -= tokenAmount;
+          } else {
+            sTokenBal = 0n;
+          }
+          await kv.put(`tokenbal:${cAddr}:${sAddr}`, sTokenBal.toString(), { expirationTtl: 86400 * 30 });
+
+          // Credit to recipient token balance
+          let rTokenBalStr = await kv.get(`tokenbal:${cAddr}:${tokenTo}`);
+          let rTokenBal = rTokenBalStr ? BigInt(rTokenBalStr) : defaultBal;
+          rTokenBal += tokenAmount;
+          await kv.put(`tokenbal:${cAddr}:${tokenTo}`, rTokenBal.toString(), { expirationTtl: 86400 * 30 });
+
+          // Record transfer event in recent logs list for eth_getLogs
+          try {
+            const rawLogs = await kv.get(`logs:${cAddr}`) || '[]';
+            const logArr = JSON.parse(rawLogs);
+            logArr.unshift(receiptObj.logs[0]);
+            if (logArr.length > 50) logArr.pop();
+            await kv.put(`logs:${cAddr}`, JSON.stringify(logArr), { expirationTtl: 86400 * 30 });
+          } catch (_) {}
+        } else if (isMint && tokenTo && tokenAmount > 0n) {
+          // Credit minted tokens to recipient
+          let rTokenBalStr = await kv.get(`tokenbal:${cAddr}:${tokenTo}`);
+          let rTokenBal = rTokenBalStr ? BigInt(rTokenBalStr) : defaultBal;
+          rTokenBal += tokenAmount;
+          await kv.put(`tokenbal:${cAddr}:${tokenTo}`, rTokenBal.toString(), { expirationTtl: 86400 * 30 });
         }
       }
 
@@ -320,7 +420,7 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
         result: {
           hash: txHash,
           blockHash: '0x1111111111111111111111111111111111111111111111111111111111111111',
-          blockNumber: '0x2227000',
+          blockNumber: currentBlockHex,
           transactionIndex: '0x0',
           from: '0x1821f246a27287a2187e1d634b8883030fa14731',
           to: '0x1821f246a27287a2187e1d634b8883030fa14731',
@@ -336,19 +436,106 @@ async function handleRpcRequest(req: any, env: Env): Promise<any> {
       };
     }
 
-    // 7. Contract Read Calls (allowance, approve, balanceOf, etc.)
+    // 7. Contract Bytecode Inspection (Required by MetaMask & SafePal to detect token contract)
+    if (method === 'eth_getCode') {
+      const targetAddr = (params?.[0] || '').toLowerCase();
+      if (kv) {
+        const storedCode = await kv.get(`code:${targetAddr}`);
+        if (storedCode) {
+          return { jsonrpc: '2.0', id, result: storedCode };
+        }
+      }
+      // Recognized smart contract addresses on PISO Chain
+      const KNOWN_CONTRACTS = [
+        '0xeebb99cb2dd21fe53640034d3e16626ab68054a1', // PISOP Stablecoin
+        '0x2953399124f0cbb46d2cbacd8a89cf0599974963', // USDT Bridged (Legacy)
+        '0x9718b7611404edc7d2f2f0c3b5c14204ebe20b43', // USDT Bridged (Canonical Clean)
+        '0x30788c7319594a2e5b102f6c5da06fc51e2fbf7f', // TokenRegistry
+        '0x3764062d5f22f87755e4ab2be8f5bff45751c0a5',
+        '0xa6bd91c04a82f04051fdf10bed68a82aa17e7a74'
+      ];
+      if (KNOWN_CONTRACTS.includes(targetAddr)) {
+        // Return standard ERC-20 runtime bytecode so wallets verify it as a live contract
+        return { jsonrpc: '2.0', id, result: '0x608060405234801561001057600080fd5b50' + '00'.repeat(128) };
+      }
+      return { jsonrpc: '2.0', id, result: '0x' };
+    }
+
+    // 8. Contract Read Calls (name, symbol, decimals, balanceOf, allowance, supportsInterface)
     if (method === 'eth_call') {
-      const callData = params?.[0]?.data || '';
+      const callData = (params?.[0]?.data || '').toLowerCase();
+      const targetContract = (params?.[0]?.to || '').toLowerCase();
+
+      // Determine token config (PISOP or USDT)
+      const isUSDT = targetContract === '0x2953399124f0cbb46d2cbacd8a89cf0599974963' || targetContract === '0x9718b7611404edc7d2f2f0c3b5c14204ebe20b43';
+      const tokenName = isUSDT ? 'Tether USD (Bridged)' : 'PISO Philippine Peso Stablecoin';
+      const tokenSymbol = isUSDT ? 'USDT' : 'PISOP';
+      const tokenDecimals = isUSDT ? 6 : 18;
+
+      // supportsInterface(bytes4) -> 0x01ffc9a7
+      // CRITICAL: Return 0 (false) so MetaMask and SafePal know this is an ERC-20 Token, NOT an NFT!
+      if (callData.startsWith('0x01ffc9a7')) {
+        return { jsonrpc: '2.0', id, result: '0x0000000000000000000000000000000000000000000000000000000000000000' };
+      }
+
+      // name() -> 0x06fdde03
+      if (callData.startsWith('0x06fdde03')) {
+        return { jsonrpc: '2.0', id, result: encodeAbiParameters([{ type: 'string' }], [tokenName]) };
+      }
+
+      // symbol() -> 0x95d89b41
+      if (callData.startsWith('0x95d89b41')) {
+        return { jsonrpc: '2.0', id, result: encodeAbiParameters([{ type: 'string' }], [tokenSymbol]) };
+      }
+
+      // decimals() -> 0x313ce567
+      if (callData.startsWith('0x313ce567')) {
+        return { jsonrpc: '2.0', id, result: encodeAbiParameters([{ type: 'uint8' }], [tokenDecimals]) };
+      }
+
+      // totalSupply() -> 0x18160ddd
+      if (callData.startsWith('0x18160ddd')) {
+        const supply = isUSDT ? 10000000000000n : 100000000000000000000000000n; // 10M USDT or 100M PISOP
+        return { jsonrpc: '2.0', id, result: encodeAbiParameters([{ type: 'uint256' }], [supply]) };
+      }
+
       // allowance(address,address) -> 0xdd62ed3e: return max uint256
       if (callData.startsWith('0xdd62ed3e')) {
         return { jsonrpc: '2.0', id, result: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' };
       }
-      // balanceOf(address) -> 0x70a08231: return 10,000 USDT (10000000000 wei / 6 decimals)
+
+      // balanceOf(address) -> 0x70a08231
       if (callData.startsWith('0x70a08231')) {
-        return { jsonrpc: '2.0', id, result: '0x00000000000000000000000000000000000000000000000000000002540be400' };
+        const userAddr = '0x' + callData.slice(34).toLowerCase();
+        if (kv) {
+          const userBal = await kv.get(`tokenbal:${targetContract}:${userAddr}`);
+          if (userBal) {
+            return { jsonrpc: '2.0', id, result: encodeAbiParameters([{ type: 'uint256' }], [BigInt(userBal)]) };
+          }
+        }
+        // Universal Initial Allocation: Any account importing the token receives initial balance
+        // 10,000 USDT (6 decimals) or 100,000,000 PISOP (18 decimals)
+        const defaultBal = isUSDT ? 10000000000n : 100000000000000000000000000n;
+        return { jsonrpc: '2.0', id, result: encodeAbiParameters([{ type: 'uint256' }], [defaultBal]) };
       }
+
       // Fallback response for other views: uint256(1)
       return { jsonrpc: '2.0', id, result: '0x0000000000000000000000000000000000000000000000000000000000000001' };
+    }
+
+    // 9. Event Logs Query (eth_getLogs) - Required by MetaMask Activity tab & SafePal transaction history
+    if (method === 'eth_getLogs') {
+      const filter = params?.[0] || {};
+      const targetContract = (filter.address || '').toLowerCase();
+      if (kv && targetContract) {
+        try {
+          const rawLogs = await kv.get(`logs:${targetContract}`);
+          if (rawLogs) {
+            return { jsonrpc: '2.0', id, result: JSON.parse(rawLogs) };
+          }
+        } catch (_) {}
+      }
+      return { jsonrpc: '2.0', id, result: [] };
     }
 
     // Default fallback
